@@ -41,7 +41,6 @@ const TimeTable = () => {
         },
     };
 
-    // Get start date of the current week
     const getStartOfWeek = (date) => {
         const start = new Date(date);
         const day = start.getDay();
@@ -50,7 +49,6 @@ const TimeTable = () => {
         return start;
     };
 
-    // Get dates for the current week
     const getDatesForWeek = (date) => {
         const startOfWeek = getStartOfWeek(date);
         return Array.from({ length: 7 }, (_, i) => {
@@ -62,7 +60,6 @@ const TimeTable = () => {
 
     const weekDates = getDatesForWeek(currentWeek);
 
-    // Format date to DD/MM/YYYY
     const formatDate = (date) => {
         return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
     };
@@ -70,39 +67,46 @@ const TimeTable = () => {
     const classifyPeriod = (time) => {
         const hour = parseInt(time.split(':')[0], 10);
         if (hour < 12) return 'Sáng';
-        if (hour < 18) return 'Chiều';
+        if (hour < 17) return 'Chiều';
         return 'Tối';
+    };
+
+    const normalizeDate = (date) => {
+        const normalized = new Date(date);
+        normalized.setHours(0, 0, 0, 0); // Set to midnight
+        return normalized;
     };
 
     const renderCellContent = (day, period) => {
         return timetable
             .filter((entry) => {
-                const startDate = new Date(entry.ngay_bat_dau);
-                const endDate = new Date(entry.ngay_ket_thuc);
+                const startDate = normalizeDate(new Date(entry.ngay_bat_dau));
+                const endDate = normalizeDate(new Date(entry.ngay_ket_thuc));
                 const entryPeriod = classifyPeriod(entry.gio_bat_dau);
-                
-                // So sánh ngày và thứ
-                const dayOfWeek = day.getDay() === 0 ? 7 : day.getDay(); // Chuyển Chủ nhật từ 0 thành 7
+
+                const normalizedDay = normalizeDate(day);
+                const dayOfWeek = normalizedDay.getDay() === 0 ? 7 : normalizedDay.getDay() + 1;
                 const entryDayOfWeek = parseInt(entry.thu);
-                
+
                 return (
-                    day >= startDate && 
-                    day <= endDate && 
-                    dayOfWeek === entryDayOfWeek && 
+                    normalizedDay >= startDate &&
+                    normalizedDay <= endDate &&
+                    dayOfWeek === entryDayOfWeek &&
                     entryPeriod === period
                 );
             })
             .map((entry) => (
                 <Card
                     key={entry.id}
-                    className="timetable-card bg-gray-100 shadow-md p-0 text-sm"
+                    className="timetable-card bg-pink-100 shadow-sm p-1 text-xs"
                     bordered={false}
+                    style={{ marginBottom: '8px', fontSize: '0.8rem' }}
                 >
-                    <p className="font-semibold">{entry.ten_hoc_phan}</p>
-                    <p>Mã HP: {entry.ma_hoc_phan}</p>
-                    <p>Tiết: {entry.tiet_hoc}</p>
-                    <p>Giờ: {entry.gio_bat_dau} - {entry.gio_ket_thuc}</p>
-                    <p>Phòng: {entry.phong_hoc}</p>
+                    <p className="font-semibold truncate">{entry.ten_hoc_phan}</p>
+                    <p><span className='font-bold'>Mã HP:</span> {entry.ma_hoc_phan}</p>
+                    <p><span className='font-bold'>Tiết:</span> {entry.tiet_hoc}</p>
+                    <p><span className='font-bold'>Giờ:</span> {entry.gio_bat_dau} - {entry.gio_ket_thuc}</p>
+                    <p><span className='font-bold'>Phòng:</span> {entry.phong_hoc}</p>
                 </Card>
             ));
     };
@@ -114,8 +118,8 @@ const TimeTable = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="container mx-auto bg-white shadow-lg rounded-lg p-6">
+        <div className="min-h-screen bg-pink-50 p-8">
+            <div className="container-fluid mx-auto bg-white shadow-lg rounded-lg p-6">
                 <h1 className="text-2xl font-bold mb-4 text-center">Quản Lý Thời Khóa Biểu</h1>
                 <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
                     <Button
@@ -158,7 +162,7 @@ const TimeTable = () => {
                             title: '',
                             dataIndex: 'period',
                             key: 'period',
-                            className: 'bg-gray-100 font-bold text-center',
+                            className: 'bg-pink-200 font-bold text-center',
                         },
                         ...daysOfWeek.map((day, index) => ({
                             title: (
