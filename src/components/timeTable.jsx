@@ -77,9 +77,20 @@ const TimeTable = () => {
     const renderCellContent = (day, period) => {
         return timetable
             .filter((entry) => {
-                const entryDate = new Date(entry.ngay_hoc);
+                const startDate = new Date(entry.ngay_bat_dau);
+                const endDate = new Date(entry.ngay_ket_thuc);
                 const entryPeriod = classifyPeriod(entry.gio_bat_dau);
-                return entryDate.toDateString() === day.toDateString() && entryPeriod === period;
+                
+                // So sánh ngày và thứ
+                const dayOfWeek = day.getDay() === 0 ? 7 : day.getDay(); // Chuyển Chủ nhật từ 0 thành 7
+                const entryDayOfWeek = parseInt(entry.thu);
+                
+                return (
+                    day >= startDate && 
+                    day <= endDate && 
+                    dayOfWeek === entryDayOfWeek && 
+                    entryPeriod === period
+                );
             })
             .map((entry) => (
                 <Card
