@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Table, Card, Upload, Button, message } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
+import Snowfall from 'react-snowfall';
 import axios from 'axios';
 import 'antd/dist/reset.css';
 
 const TimeTable = () => {
     const [timetable, setTimetable] = useState([]);
     const [currentWeek, setCurrentWeek] = useState(new Date());
+    const [snowIntensity, setSnowIntensity] = useState(0);
 
     const timePeriods = ['Sáng', 'Chiều', 'Tối'];
     const daysOfWeek = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
@@ -16,14 +18,54 @@ const TimeTable = () => {
         fetchTimetable();
     }, [currentWeek]);
 
+
+
+    const CustomSnowflake = () => {
+        return (
+            <div
+                style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'linear-gradient(45deg, #94CFE3, #F7E7E2)',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 5px rgba(255, 255, 255, 0.8)',
+                }}
+            />
+        );
+    };
+
+
+    
+
+
     const fetchTimetable = async () => {
         try {
             const response = await axios.get(import.meta.env.VITE_API_URL + '/api/timetable');
             setTimetable(response.data);
         } catch (error) {
-            message.error('Lỗi tải thời khóa biểu');
+            message.error('Lỗi tải thời khóa biểu.' + `Mã lỗi ${error.status}`);
         }
     };
+
+    useEffect(() => {
+        fetchTimetable();
+
+        const checkSeasonalSnow = () => {
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const date = today.getDate();
+
+            if (month === 12 || month === 1 || month === 2) {
+                setSnowIntensity(0.5);
+            }
+
+            if ((month === 12 && date >= 24 && date <= 26) || (month === 1 && date === 1)) {
+                setSnowIntensity(0.8);
+            }
+        };
+
+        checkSeasonalSnow();
+    }, []);
 
     const uploadProps = {
         name: 'file',
@@ -98,14 +140,18 @@ const TimeTable = () => {
             .map((entry) => (
                 <Card
                     key={entry.id}
-                    className="timetable-card bg-pink-100 shadow-sm p-1 text-xs"
-                    bordered={false}
-                    style={{ marginBottom: '8px', fontSize: '0.8rem' }}
+                    className="timetable-card bg-pink-100 shadow-sm p-0 text-xs"
+                    bordered={true}
+                    style={{ marginBottom: '10px', fontSize: '0.6rem', maxWidth: '200px' }}
                 >
-                    <p className="font-semibold truncate">{entry.ten_hoc_phan}</p>
+                    <p className="font-bold">{entry.ten_hoc_phan}</p>
                     <p><span className='font-bold'>Mã HP:</span> {entry.ma_hoc_phan}</p>
                     <p><span className='font-bold'>Tiết:</span> {entry.tiet_hoc}</p>
-                    <p><span className='font-bold'>Giờ:</span> {entry.gio_bat_dau} - {entry.gio_ket_thuc}</p>
+                    <p>
+                        <span className='font-bold'>Giờ:</span> {entry.gio_bat_dau.replace(/:00$/, '')} - {entry.gio_ket_thuc.replace(/:00$/, '')}
+                    </p>
+
+
                     <p><span className='font-bold'>Phòng:</span> {entry.phong_hoc}</p>
                 </Card>
             ));
@@ -118,9 +164,21 @@ const TimeTable = () => {
     };
 
     return (
-        <div className="min-h-screen bg-pink-50 p-8">
-            <div className="container-fluid mx-auto bg-white shadow-lg rounded-lg p-6">
-                <h1 className="text-2xl font-bold mb-4 text-center">Quản Lý Thời Khóa Biểu</h1>
+        <div className="min-h-screen bg-pink-50 p-0">
+            <Snowfall
+                snowflakeCount={200}
+                snowflakeFactory={(index) => (
+                    <CustomSnowflake key={index} />
+                )}
+                style={{
+                    position: 'fixed',
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 10,
+                }}
+            />
+            <div className="container-fluid mx-auto bg-white shadow-lg rounded-lg p-2">
+                <h1 className="text-2xl font-bold mb-4 text-center">💗 Lịch học của bạn nhỏ 💗</h1>
                 <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
                     <Button
                         onClick={() => handleWeekChange(-1)}
