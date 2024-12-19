@@ -3,6 +3,7 @@ import { Table, Card, Upload, Button, message } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import Snowfall from 'react-snowfall';
 import * as XLSX from 'xlsx';
+import timetableData from './data.json'; // Import file JSON
 import 'antd/dist/reset.css';
 
 const TimeTable = () => {
@@ -12,6 +13,20 @@ const TimeTable = () => {
 
     const timePeriods = ['Sáng', 'Chiều', 'Tối'];
     const daysOfWeek = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+
+
+    useEffect(() => {
+        // Load data từ JSON
+        const loadTimetableFromJSON = () => {
+            try {
+                setTimetable(timetableData); // Gán dữ liệu từ JSON
+            } catch (error) {
+                console.error('Error loading timetable from JSON:', error);
+            }
+        };
+
+        loadTimetableFromJSON();
+    }, []);
 
     const CustomSnowflake = () => {
         return (
@@ -159,45 +174,78 @@ const excelDateToJSDate = (excelDate) => {
         checkSeasonalSnow();
     }, []);
 
+    const downloadJSONFile = (data, filename) => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
     const uploadProps = {
         name: 'file',
-        accept: '.xlsx,.xls',
+        accept: '.xlsx,.xls,.json',
         beforeUpload: (file) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const data = XLSX.utils.sheet_to_json(worksheet);
-                    
-                    console.log('Raw Excel Data:', data); // Log dữ liệu thô
-                    
-                    if (data.length === 0) {
-                        throw new Error('No data found in Excel file');
-                    }
     
-                    // Log cấu trúc của dòng đầu tiên
-                    console.log('First row structure:', Object.keys(data[0]));
-                    
-                    const processedData = processExcelData(data);
-                    console.log('Processed Data:', processedData); // Log dữ liệu đã xử lý
-                    
-                    if (processedData.length === 0) {
-                        throw new Error('No valid data after processing');
-                    }
+            // Kiểm tra định dạng file
+            if (file.type === 'application/json') {
+                reader.onload = (e) => {
+                    try {
+                        const jsonData = JSON.parse(e.target.result); // Parse dữ liệu JSON
+                        console.log('JSON Data:', jsonData);
+                        
+                        if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                            throw new Error('Invalid or empty JSON data');
+                        }
     
-                    saveToStorage(processedData);
-                    message.success(`${file.name} đã được tải lên thành công`);
-                } catch (error) {
-                    console.error('Error details:', error);
-                    message.error(`Lỗi khi xử lý file Excel: ${error.message}`);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            return false;
+                        saveToStorage(jsonData); // Lưu vào localStorage và trạng thái
+                        message.success('Tải dữ liệu từ file JSON thành công');
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        message.error('Lỗi khi đọc file JSON');
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                reader.onload = (e) => {
+                    try {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const data = XLSX.utils.sheet_to_json(worksheet);
+    
+                        console.log('Raw Excel Data:', data);
+                        if (data.length === 0) {
+                            throw new Error('No data found in Excel file');
+                        }
+    
+                        const processedData = processExcelData(data);
+                        console.log('Processed Data:', processedData);
+    
+                        if (processedData.length === 0) {
+                            throw new Error('No valid data after processing');
+                        }
+    
+                        // Tải xuống tệp JSON
+                        downloadJSONFile(processedData, 'time_table');
+                        saveToStorage(processedData); // Lưu vào localStorage và trạng thái
+                        message.success(`${file.name} đã được xử lý thành công`);
+                    } catch (error) {
+                        console.error('Error processing Excel:', error);
+                        message.error(`Lỗi khi xử lý file Excel: ${error.message}`);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            return false; // Ngăn tải tệp lên server
         }
     };
+    
+    
 
     const getStartOfWeek = (date) => {
         const start = new Date(date);
@@ -239,11 +287,11 @@ const excelDateToJSDate = (excelDate) => {
                 const startDate = normalizeDate(new Date(entry.ngay_bat_dau));
                 const endDate = normalizeDate(new Date(entry.ngay_ket_thuc));
                 const entryPeriod = classifyPeriod(entry.gio_bat_dau);
-
+    
                 const normalizedDay = normalizeDate(day);
                 const dayOfWeek = normalizedDay.getDay() === 0 ? 7 : normalizedDay.getDay() + 1;
                 const entryDayOfWeek = parseInt(entry.thu);
-
+    
                 return (
                     normalizedDay >= startDate &&
                     normalizedDay <= endDate &&
@@ -268,6 +316,7 @@ const excelDateToJSDate = (excelDate) => {
                 </Card>
             ));
     };
+    
 
     const handleWeekChange = (direction) => {
         const newWeek = new Date(currentWeek);
